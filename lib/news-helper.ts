@@ -26,6 +26,7 @@ export async function getNewsContext(question: string): Promise<Array<{title: st
 
       if (isTechTodayQuestion) {
         // Tech news query: combine user question with tech/AI terms for better results
+        const today = new Date();
         const from = new Date(today);
         from.setDate(today.getDate() - 2);
         const fromStr = from.toISOString().split("T")[0];
