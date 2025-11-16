@@ -29,19 +29,18 @@ export async function POST(request: NextRequest) {
     const newsText = newsToText(newsItems);
 
     // Build enhanced prompt with stronger guidance
-    const enhancedMessage = `You are answering a question with web search results provided.
+    const enhancedMessage = `You are one of three models answering the same question side by side.
 
-Current Information and News Context:
+Web context (this is the ONLY up-to-date information you can use):
 ${newsText}
 
-User question: ${message}
+Rules:
+- If the answer is clearly in the web context, use it.
+- If the web context does NOT contain the answer, say explicitly:
+  "The web results I was given do not contain the answer to this question."
+- Do NOT guess based on prior knowledge or older world state.
 
-IMPORTANT INSTRUCTIONS:
-- Use ONLY the information provided above to answer the question
-- If the web search results don't contain relevant information, say "I couldn't find specific information about that in the current search results"
-- Do NOT make up or guess information that isn't in the provided context
-- You can provide general knowledge but clearly distinguish it from current information
-- Always reference the current date provided above when discussing time-sensitive topics`;
+User question: ${message}`;
 
     const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
     // Using Gemini 2.0 Flash which is available and fast

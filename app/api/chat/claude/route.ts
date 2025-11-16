@@ -29,22 +29,18 @@ export async function POST(request: NextRequest) {
     const newsText = newsToText(newsItems);
 
     // Build enhanced prompt with clear context for Claude
-    const userContent = `
-You are one of three models answering the same question side by side with web search results.
+    const userContent = `You are one of three models answering the same question side by side.
 
-Current Information and News Context:
+Web context (this is the ONLY up-to-date information you can use):
 ${newsText}
 
-User question: ${message}
+Rules:
+- If the answer is clearly in the web context, use it.
+- If the web context does NOT contain the answer, say explicitly:
+  "The web results I was given do not contain the answer to this question."
+- Do NOT guess based on prior knowledge or older world state.
 
-CRITICAL INSTRUCTIONS:
-- You HAVE been provided with web search results above - use them to answer
-- Use ONLY the information provided above for current events and specific facts
-- If the web search results don't contain relevant information, explicitly say "I couldn't find specific information about that in the search results provided"
-- Do NOT hallucinate or make up information that isn't in the context
-- You can provide general knowledge but MUST distinguish it from the current information
-- Always use the current date shown above when discussing time-sensitive topics
-`.trim();
+User question: ${message}`;
 
     const anthropic = new Anthropic({
       apiKey: process.env.CLAUDE_API_KEY,
