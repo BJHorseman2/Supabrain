@@ -11,117 +11,176 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Multiple search strategies to ensure we get current information
     let context = '';
     let results: any[] = [];
 
-    // Strategy 1: Try Wikipedia Current Events for general current info
-    try {
-      const wikiUrl = `https://en.wikipedia.org/api/rest_v1/page/summary/Portal:Current_events`;
-      const wikiResponse = await fetch(wikiUrl);
+    // Get current date for context
+    const currentDate = new Date();
+    const formattedDate = currentDate.toLocaleDateString('en-US', {
+      weekday: 'long',
+      year: 'numeric',
+      month: 'long',
+      day: 'numeric'
+    });
 
-      if (wikiResponse.ok) {
-        const wikiData = await wikiResponse.json();
-        if (wikiData.extract) {
-          const today = new Date().toLocaleDateString('en-US', {
-            weekday: 'long',
-            year: 'numeric',
-            month: 'long',
-            day: 'numeric'
+    // 1. Try The Guardian API first (free, works with 'test' key, provides current news)
+    try {
+      const guardianUrl = `https://content.guardianapis.com/search?q=${encodeURIComponent(query)}&api-key=test&show-fields=headline,trailText&page-size=10&order-by=newest`;
+
+      const guardianResponse = await fetch(guardianUrl);
+
+      if (guardianResponse.ok) {
+        const guardianData = await guardianResponse.json();
+
+        if (guardianData.response && guardianData.response.results && guardianData.response.results.length > 0) {
+          // Filter for only very recent articles (last 48 hours)
+          const twoDaysAgo = new Date();
+          twoDaysAgo.setDate(twoDaysAgo.getDate() - 2);
+
+          const recentArticles = guardianData.response.results.filter((article: any) => {
+            const pubDate = new Date(article.webPublicationDate);
+            return pubDate > twoDaysAgo;
           });
 
-          // Add current date context
-          context = `Today's Date: ${today}
+          if (recentArticles.length > 0) {
+            context = `Current Information (${formattedDate}):
 
-Important: This is the actual current date. Please provide information that is accurate as of this date.
+Latest news about "${query}" from the past 48 hours:
 
-`;
+${recentArticles.slice(0, 5).map((article: any, i: number) => {
+  const pubDate = new Date(article.webPublicationDate);
+  const timeDiff = currentDate.getTime() - pubDate.getTime();
+  const hoursAgo = Math.floor(timeDiff / (1000 * 60 * 60));
+  let timeString: string;
+
+  if (hoursAgo < 1) {
+    timeString = 'Just published';
+  } else if (hoursAgo === 1) {
+    timeString = '1 hour ago';
+  } else if (hoursAgo < 24) {
+    timeString = `${hoursAgo} hours ago`;
+  } else {
+    const daysAgo = Math.floor(hoursAgo / 24);
+    timeString = daysAgo === 1 ? 'Yesterday' : `${daysAgo} days ago`;
+  }
+
+  return `${i + 1}. ${article.webTitle}
+   Source: The Guardian (${timeString})
+   ${article.fields?.trailText || 'Click for full article'}
+   URL: ${article.webUrl}`;
+}).join('\n\n')}
+
+Based on this current information:`;
+
+            results = recentArticles;
+          }
         }
       }
     } catch (error) {
-      console.log('Wikipedia fetch failed:', error);
+      console.log('Guardian API failed:', error);
     }
 
-    // Strategy 2: Try to get RSS feeds from major news sources (no API key needed)
-    const rssFeeds = [
-      {
-        name: 'BBC News',
-        url: `https://news.google.com/rss/search?q=${encodeURIComponent(query)}&hl=en-US&gl=US&ceid=US:en`
-      }
-    ];
-
-    for (const feed of rssFeeds) {
+    // 2. If no Guardian results, try Hacker News for tech topics
+    if (!results.length) {
       try {
-        const response = await fetch(feed.url);
-        if (response.ok) {
-          const text = await response.text();
+        const hnUrl = `https://hn.algolia.com/api/v1/search?query=${encodeURIComponent(query)}&tags=story&hitsPerPage=10`;
 
-          // Parse basic info from RSS (simplified parsing)
-          const titleMatches = text.match(/<title>(.*?)<\/title>/gi);
-          const linkMatches = text.match(/<link>(.*?)<\/link>/gi);
-          const descMatches = text.match(/<description>(.*?)<\/description>/gi);
+        const hnResponse = await fetch(hnUrl);
 
-          if (titleMatches && titleMatches.length > 2) {
-            const newsItems = [];
-            for (let i = 2; i < Math.min(7, titleMatches.length); i++) {
-              const title = titleMatches[i]?.replace(/<\/?title>/gi, '').replace(/<!\[CDATA\[|\]\]>/g, '');
-              const desc = descMatches?.[i]?.replace(/<\/?description>/gi, '').replace(/<!\[CDATA\[|\]\]>/g, '') || '';
+        if (hnResponse.ok) {
+          const hnData = await hnResponse.json();
 
-              if (title && !title.includes('Google News')) {
-                newsItems.push({
-                  title: title.substring(0, 200),
-                  description: desc.substring(0, 300)
-                });
-              }
-            }
+          if (hnData.hits && hnData.hits.length > 0) {
+            // Filter for recent HN stories (last 48 hours for more current content)
+            const twoDaysAgo = new Date();
+            twoDaysAgo.setDate(twoDaysAgo.getDate() - 2);
 
-            if (newsItems.length > 0) {
-              context += `Current news related to "${query}":
+            const recentHN = hnData.hits.filter((hit: any) => {
+              const storyDate = new Date(hit.created_at);
+              return storyDate > twoDaysAgo;
+            });
 
-${newsItems.map((item, i) =>
-  `${i + 1}. ${item.title}
-   ${item.description ? item.description : ''}`
-).join('\n\n')}
+            if (recentHN.length > 0) {
+              context = `Current Information (${formattedDate}):
 
-Based on this current information, here's the analysis:`;
+Recent discussions about "${query}" from the tech community:
 
-              results = newsItems;
-              break;
+${recentHN.slice(0, 5).map((hit: any, i: number) => {
+  const storyDate = new Date(hit.created_at);
+  const timeDiff = currentDate.getTime() - storyDate.getTime();
+  const hoursAgo = Math.floor(timeDiff / (1000 * 60 * 60));
+  let timeString: string;
+
+  if (hoursAgo < 1) {
+    timeString = 'Just posted';
+  } else if (hoursAgo === 1) {
+    timeString = '1 hour ago';
+  } else if (hoursAgo < 24) {
+    timeString = `${hoursAgo} hours ago`;
+  } else {
+    const daysAgo = Math.floor(hoursAgo / 24);
+    timeString = daysAgo === 1 ? 'Yesterday' : `${daysAgo} days ago`;
+  }
+
+  return `${i + 1}. ${hit.title}
+   Source: ${hit.author} on Hacker News (${timeString})
+   Points: ${hit.points} | Comments: ${hit.num_comments}
+   ${hit.url ? `URL: ${hit.url}` : `Discussion: https://news.ycombinator.com/item?id=${hit.objectID}`}`;
+}).join('\n\n')}
+
+Based on these recent tech discussions:`;
+
+              results = recentHN;
             }
           }
         }
       } catch (error) {
-        console.log('RSS fetch failed:', error);
+        console.log('HackerNews API failed:', error);
       }
     }
 
-    // If no news found, provide clear current date context
+    // 3. Try Wikipedia for current events context
+    if (!results.length) {
+      try {
+        const wikiUrl = `https://en.wikipedia.org/api/rest_v1/page/summary/${encodeURIComponent(query.replace(/ /g, '_'))}`;
+        const wikiResponse = await fetch(wikiUrl);
+
+        if (wikiResponse.ok) {
+          const wikiData = await wikiResponse.json();
+          if (wikiData.extract) {
+            context = `Current Date: ${formattedDate}
+
+Information about "${query}":
+
+${wikiData.extract}
+
+Source: Wikipedia
+URL: ${wikiData.content_urls?.desktop?.page || ''}
+
+Please note this is reference information. For current events and recent developments as of ${formattedDate}, here's the analysis:`;
+
+            results = [{ title: wikiData.title, extract: wikiData.extract }];
+          }
+        }
+      } catch (error) {
+        console.log('Wikipedia fetch failed:', error);
+      }
+    }
+
+    // Always provide date context even if no specific results found
     if (!context || results.length === 0) {
-      const currentDate = new Date();
-      const formattedDate = currentDate.toLocaleDateString('en-US', {
-        weekday: 'long',
-        year: 'numeric',
-        month: 'long',
-        day: 'numeric'
-      });
+      context = `Current Date: ${formattedDate}
 
-      const currentTime = currentDate.toLocaleTimeString('en-US', {
-        hour: 'numeric',
-        minute: 'numeric',
-        hour12: true,
-        timeZoneName: 'short'
-      });
+IMPORTANT: This is today's actual date - ${formattedDate}.
 
-      context = `Current Date and Time: ${formattedDate} at ${currentTime}
+You are being asked about "${query}". While I don't have specific recent news articles to share about this exact topic right now, please provide your response with full awareness that today is ${formattedDate}.
 
-IMPORTANT: You are being asked about "${query}". Today's date is ${formattedDate}. Please ensure your response reflects information that would be current as of this date. If you're asked about recent events, news, or current information, acknowledge that your training data may not include the very latest updates but provide the most recent information you have available.
+When discussing any events, trends, or information:
+- Reference the current date (${formattedDate})
+- Note if information might be from your training data vs current
+- For recent events, acknowledge the timeframe appropriately
 
-Note: For real-time information, consider that:
-- Today is ${currentDate.toDateString()}
-- The year is ${currentDate.getFullYear()}
-- The month is ${currentDate.toLocaleString('en-US', { month: 'long' })}
-
-Please provide your response with this temporal context in mind:`;
+Please respond with this temporal context:`;
     }
 
     return NextResponse.json({
@@ -133,16 +192,17 @@ Please provide your response with this temporal context in mind:`;
   } catch (error) {
     console.error('Search error:', error);
 
-    // Even on error, provide date context
     const currentDate = new Date();
-    const context = `Today's Date: ${currentDate.toLocaleDateString('en-US', {
+    const formattedDate = currentDate.toLocaleDateString('en-US', {
       weekday: 'long',
       year: 'numeric',
       month: 'long',
       day: 'numeric'
-    })}
+    });
 
-Please provide information about "${request.json().then(d => d.query).catch(() => 'the topic')}" with awareness of the current date.`;
+    const context = `Today's Date: ${formattedDate}
+
+Please provide information about the requested topic with awareness that today is ${formattedDate}.`;
 
     return NextResponse.json({
       results: [],
