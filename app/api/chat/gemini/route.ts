@@ -20,8 +20,8 @@ export async function POST(request: NextRequest) {
     }
 
     const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
-    // Try without version suffix
-    const model = genAI.getGenerativeModel({ model: 'gemini-pro' });
+    // Using Gemini 2.0 Flash which is available and fast
+    const model = genAI.getGenerativeModel({ model: 'models/gemini-2.0-flash' });
 
     const result = await model.generateContent(message);
     const response = await result.response;
