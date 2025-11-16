@@ -26,6 +26,7 @@ export async function POST(request: NextRequest) {
     const completion = await anthropic.messages.create({
       model: 'claude-3-haiku-20240307',
       max_tokens: 1000,
+      system: `You are a helpful assistant. Today's date is ${new Date().toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}.`,
       messages: [
         {
           role: 'user',

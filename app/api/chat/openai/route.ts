@@ -27,6 +27,10 @@ export async function POST(request: NextRequest) {
       model: 'gpt-3.5-turbo',
       messages: [
         {
+          role: 'system',
+          content: `You are a helpful assistant. Today's date is ${new Date().toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}.`,
+        },
+        {
           role: 'user',
           content: message,
         },
