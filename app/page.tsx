@@ -133,7 +133,10 @@ export default function Home() {
             SUPERBRAIN
           </h1>
           <p className="text-lg text-[#34495E] font-mono">
-            [ three minds • one question • zero consensus ]
+            [ tech & AI news only • three minds • one question ]
+          </p>
+          <p className="text-sm text-[#7F8C8D] font-mono mt-2">
+            Ask about: OpenAI, ChatGPT, Claude, Gemini, Nvidia, chips, LLMs, tech news, AI regulations, etc.
           </p>
         </div>
 
@@ -144,7 +147,7 @@ export default function Home() {
               value={question}
               onChange={(e) => setQuestion(e.target.value)}
               onKeyPress={handleKeyPress}
-              placeholder="What's on your mind?"
+              placeholder="Ask about today's tech & AI news..."
               className="w-full p-4 bg-[#FFFEF9] border-2 border-[#2C3E50] font-mono text-[#2C3E50] placeholder-[#7F8C8D] resize-none focus:outline-none focus:border-[#E74C3C] transition-all"
               rows={3}
             />
