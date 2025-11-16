@@ -133,7 +133,7 @@ export default function Home() {
             SUPERBRAIN
           </h1>
           <p className="text-lg text-[#34495E] font-mono">
-            [ tech & AI news only • three minds • one question ]
+            [ tech & AI news • three minds • one question ]
           </p>
           <p className="text-sm text-[#7F8C8D] font-mono mt-2">
             Ask about: OpenAI, ChatGPT, Claude, Gemini, Nvidia, chips, LLMs, tech news, AI regulations, etc.
