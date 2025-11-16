@@ -20,6 +20,7 @@ export async function POST(request: NextRequest) {
     }
 
     const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
+    // Try without version suffix
     const model = genAI.getGenerativeModel({ model: 'gemini-pro' });
 
     const result = await model.generateContent(message);
