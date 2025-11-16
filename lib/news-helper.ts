@@ -16,48 +16,55 @@ export async function getNewsContext(question: string): Promise<Array<{title: st
     // Always focus on Tech/AI for this app
     const isTechTodayQuestion = true; // Always use tech-focused search
 
-    // First, try NewsAPI if key is available (skip obviously fake keys)
-    if (process.env.NEWS_API_KEY &&
-        process.env.NEWS_API_KEY !== '2f3d4e5a6b7c8d9e0f1a2b3c4d5e6f7a' &&
-        process.env.NEWS_API_KEY !== 'c4a1f1e4c4e746f7b3f3c7e8d9a2b5e3' &&
-        process.env.NEWS_API_KEY.length > 20) {
+    // First, try Brave Search API if key is available
+    if (process.env.BRAVE_SEARCH_API_KEY &&
+        process.env.BRAVE_SEARCH_API_KEY.length > 20) {
 
-      let newsApiUrl: string;
+      // Build tech/AI-focused query
+      const userQuery = question.substring(0, 100);
+      const techTerms = "(AI OR artificial intelligence OR OpenAI OR ChatGPT OR Claude OR Anthropic OR Google Gemini OR Microsoft OR Nvidia OR chip OR semiconductor OR GPU OR LLM OR machine learning OR tech OR technology)";
+      const combinedQuery = `${userQuery} ${techTerms}`;
 
-      if (isTechTodayQuestion) {
-        // Tech news query: combine user question with tech/AI terms for better results
-        const today = new Date();
-        const from = new Date(today);
-        from.setDate(today.getDate() - daysBack);
-        const fromStr = from.toISOString().split("T")[0]; // YYYY-MM-DD
-        // Combine user question with tech/AI terms
-        const userQuery = question.substring(0, 100);
-        const techTerms = "(AI OR artificial intelligence OR OpenAI OR ChatGPT OR Claude OR Anthropic OR Google OR Gemini OR Microsoft OR Nvidia OR chip OR semiconductor OR GPU OR LLM OR machine learning OR tech OR technology)";
-        const combinedQuery = `${userQuery} ${techTerms}`;
-        newsApiUrl = `https://newsapi.org/v2/everything?q=${encodeURIComponent(combinedQuery)}&from=${fromStr}&sortBy=publishedAt&language=en&pageSize=5`;
-      } else {
-        // General query: use full question with wider window and relevancy sorting
-        const truncatedQuery = question.substring(0, 200);
-        const today = new Date();
-        const yearAgo = new Date(today);
-        yearAgo.setDate(today.getDate() - 365);
-        const fromStr = yearAgo.toISOString().split("T")[0]; // YYYY-MM-DD
-        newsApiUrl = `https://newsapi.org/v2/everything?q=${encodeURIComponent(truncatedQuery)}&from=${fromStr}&sortBy=relevancy&language=en&pageSize=5`;
+      // Use Brave's freshness parameter for recent results
+      // pd = publish date: pd1 (24h), pd3 (3 days), pw (past week), pm (past month)
+      let freshness = 'pd3'; // default to 3 days
+      if (daysBack <= 1) {
+        freshness = 'pd1';
+      } else if (daysBack >= 7) {
+        freshness = 'pw';
       }
 
-      const newsApiResponse = await fetch(newsApiUrl, {
+      // Constrain to news results with tech focus
+      const braveUrl = `https://api.search.brave.com/res/v1/web/search?q=${encodeURIComponent(combinedQuery)}&freshness=${freshness}&result_filter=news&count=10`;
+
+      const braveResponse = await fetch(braveUrl, {
         headers: {
-          'X-Api-Key': process.env.NEWS_API_KEY,
+          'Accept': 'application/json',
+          'X-Subscription-Token': process.env.BRAVE_SEARCH_API_KEY,
         },
       });
 
-      if (newsApiResponse.ok) {
-        const data = await newsApiResponse.json();
-        if (data.articles && Array.isArray(data.articles)) {
-          return data.articles.slice(0, 5).map((article: any) => ({
-            title: article.title || '',
-            url: article.url || '',
-            snippet: (article.description || article.content || '').substring(0, 250),
+      if (braveResponse.ok) {
+        const data = await braveResponse.json();
+        if (data.web && data.web.results && Array.isArray(data.web.results)) {
+          // Filter for tech/AI related results and recent dates
+          const techKeywords = ['ai', 'artificial intelligence', 'openai', 'chatgpt', 'claude', 'anthropic',
+                               'gemini', 'google', 'microsoft', 'nvidia', 'chip', 'semiconductor', 'gpu',
+                               'llm', 'machine learning', 'tech', 'technology', 'software', 'startup',
+                               'deepmind', 'meta', 'apple', 'amazon', 'model', 'neural', 'algorithm'];
+
+          const filteredResults = data.web.results.filter((result: any) => {
+            const titleLower = (result.title || '').toLowerCase();
+            const descLower = (result.description || '').toLowerCase();
+            return techKeywords.some(keyword =>
+              titleLower.includes(keyword) || descLower.includes(keyword)
+            );
+          });
+
+          return filteredResults.slice(0, 5).map((result: any) => ({
+            title: result.title || '',
+            url: result.url || '',
+            snippet: (result.description || '').substring(0, 250),
           }));
         }
       }
@@ -66,16 +73,19 @@ export async function getNewsContext(question: string): Promise<Array<{title: st
     // Fallback: Use The Guardian API (free with 'test' key)
     let guardianUrl: string;
 
-    if (isTechTodayQuestion) {
-      // Tech news: combine user question with tech terms
-      const userQuery = question.substring(0, 100);
-      const techQuery = `${userQuery} (AI OR OpenAI OR ChatGPT OR Anthropic OR Nvidia OR tech OR technology OR software OR chip OR LLM)`;
-      guardianUrl = `https://content.guardianapis.com/search?q=${encodeURIComponent(techQuery)}&section=technology&api-key=test&show-fields=trailText,bodyText&page-size=10&order-by=newest`;
-    } else {
-      // General query: use full question with relevance sorting
-      const truncatedQuery = question.substring(0, 200);
-      guardianUrl = `https://content.guardianapis.com/search?q=${encodeURIComponent(truncatedQuery)}&api-key=test&show-fields=trailText,bodyText&page-size=10&order-by=relevance`;
-    }
+    // Always use tech-focused search for this app
+    // Add date range to get recent articles
+    const today = new Date();
+    const fromDate = new Date(today);
+    fromDate.setDate(today.getDate() - daysBack);
+    const fromDateStr = fromDate.toISOString().split('T')[0];
+
+    // Tech news: combine user question with tech terms
+    const userQuery = question.substring(0, 100);
+    const techQuery = `${userQuery} (AI OR OpenAI OR ChatGPT OR Claude OR Anthropic OR Gemini OR Google OR Microsoft OR Nvidia OR chip OR semiconductor OR GPU OR LLM OR machine learning OR tech OR technology OR software OR startup)`;
+
+    // Include from-date parameter for recency
+    guardianUrl = `https://content.guardianapis.com/search?q=${encodeURIComponent(techQuery)}&section=technology&from-date=${fromDateStr}&api-key=test&show-fields=trailText,bodyText&page-size=15&order-by=newest`;
 
     const guardianResponse = await fetch(guardianUrl);
 
@@ -83,28 +93,20 @@ export async function getNewsContext(question: string): Promise<Array<{title: st
       const guardianData = await guardianResponse.json();
 
       if (guardianData.response?.results?.length > 0) {
-        if (isTechTodayQuestion) {
-          // For tech today questions, filter to recent articles
-          const cutoffDate = new Date();
-          cutoffDate.setDate(cutoffDate.getDate() - daysBack);
+        // Filter to ensure we get tech-related articles
+        const techKeywords = ['ai', 'artificial intelligence', 'openai', 'chatgpt', 'claude', 'anthropic',
+                             'gemini', 'google', 'microsoft', 'nvidia', 'chip', 'semiconductor', 'gpu',
+                             'llm', 'machine learning', 'tech', 'technology', 'software', 'startup',
+                             'deepmind', 'meta', 'apple', 'amazon', 'model', 'neural', 'algorithm'];
 
-          const recentArticles = guardianData.response.results
-            .filter((article: any) => {
-              const pubDate = new Date(article.webPublicationDate);
-              return pubDate > cutoffDate;
-            })
-            .slice(0, 5);
+        const filteredArticles = guardianData.response.results.filter((article: any) => {
+          const title = (article.webTitle || '').toLowerCase();
+          const snippet = (article.fields?.trailText || article.fields?.bodyText || '').toLowerCase();
+          return techKeywords.some(keyword => title.includes(keyword) || snippet.includes(keyword));
+        });
 
-          if (recentArticles.length > 0) {
-            return recentArticles.map((article: any) => ({
-              title: article.webTitle || '',
-              url: article.webUrl || '',
-              snippet: article.fields?.trailText || article.fields?.bodyText?.substring(0, 250) || 'Read full article for details',
-            }));
-          }
-        } else {
-          // For general queries, take most relevant regardless of date
-          return guardianData.response.results.slice(0, 5).map((article: any) => ({
+        if (filteredArticles.length > 0) {
+          return filteredArticles.slice(0, 5).map((article: any) => ({
             title: article.webTitle || '',
             url: article.webUrl || '',
             snippet: article.fields?.trailText || article.fields?.bodyText?.substring(0, 250) || 'Read full article for details',
@@ -114,7 +116,7 @@ export async function getNewsContext(question: string): Promise<Array<{title: st
     }
 
     // Additional fallback: Add current date context at minimum
-    const today = new Date().toLocaleDateString('en-US', {
+    const currentDate = new Date().toLocaleDateString('en-US', {
       weekday: 'long',
       year: 'numeric',
       month: 'long',
@@ -122,15 +124,15 @@ export async function getNewsContext(question: string): Promise<Array<{title: st
     });
 
     return [{
-      title: `Current Date: ${today}`,
+      title: `Current Date: ${currentDate}`,
       url: '',
-      snippet: `Today is ${today}. While specific news articles couldn't be fetched, this confirms the current date for time-sensitive questions.`
+      snippet: `Today is ${currentDate}. While specific news articles couldn't be fetched, this confirms the current date for time-sensitive questions.`
     }];
 
   } catch (error) {
     console.log('News fetch error:', error);
     // Return date context even on error
-    const today = new Date().toLocaleDateString('en-US', {
+    const currentDate = new Date().toLocaleDateString('en-US', {
       weekday: 'long',
       year: 'numeric',
       month: 'long',
@@ -138,9 +140,9 @@ export async function getNewsContext(question: string): Promise<Array<{title: st
     });
 
     return [{
-      title: `Current Date: ${today}`,
+      title: `Current Date: ${currentDate}`,
       url: '',
-      snippet: `Today is ${today}. News sources are temporarily unavailable, but this confirms the current date.`
+      snippet: `Today is ${currentDate}. News sources are temporarily unavailable, but this confirms the current date.`
     }];
   }
 }
