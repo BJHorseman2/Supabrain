@@ -23,14 +23,9 @@ export async function POST(request: NextRequest) {
     // Using Gemini 2.0 Flash which is available and fast
     const model = genAI.getGenerativeModel({ model: 'models/gemini-2.0-flash' });
 
-    const currentDate = new Date().toLocaleDateString('en-US', {
-      weekday: 'long',
-      year: 'numeric',
-      month: 'long',
-      day: 'numeric'
-    });
-    const promptWithDate = `Today's date is ${currentDate}. ${message}`;
-    const result = await model.generateContent(promptWithDate);
+    // Don't add date context if web search is being used (it will have current context)
+    // Otherwise just pass the message directly
+    const result = await model.generateContent(message);
     const response = await result.response;
     const text = response.text();
 
