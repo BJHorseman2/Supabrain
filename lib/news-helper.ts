@@ -3,15 +3,6 @@
 export async function getNewsContext(question: string): Promise<Array<{title: string, url: string, snippet: string}>> {
   const newsItems: Array<{title: string, url: string, snippet: string}> = [];
 
-  // Always get current date
-  const today = new Date();
-  const todayStr = today.toLocaleDateString('en-US', {
-    weekday: 'long',
-    year: 'numeric',
-    month: 'long',
-    day: 'numeric'
-  });
-
   try {
     // Compute how many days back to search based on question content
     const qLower = question.toLowerCase();
@@ -38,7 +29,7 @@ export async function getNewsContext(question: string): Promise<Array<{title: st
         const today = new Date();
         const from = new Date(today);
         from.setDate(today.getDate() - daysBack);
-        const fromStr = from.toISOString().split("T")[0];
+        const fromStr = from.toISOString().split("T")[0]; // YYYY-MM-DD
         // Combine user question with tech/AI terms
         const userQuery = question.substring(0, 100);
         const techTerms = "(AI OR artificial intelligence OR OpenAI OR ChatGPT OR Claude OR Anthropic OR Google OR Gemini OR Microsoft OR Nvidia OR chip OR semiconductor OR GPU OR LLM OR machine learning OR tech OR technology)";
@@ -50,7 +41,7 @@ export async function getNewsContext(question: string): Promise<Array<{title: st
         const today = new Date();
         const yearAgo = new Date(today);
         yearAgo.setDate(today.getDate() - 365);
-        const fromStr = yearAgo.toISOString().split("T")[0];
+        const fromStr = yearAgo.toISOString().split("T")[0]; // YYYY-MM-DD
         newsApiUrl = `https://newsapi.org/v2/everything?q=${encodeURIComponent(truncatedQuery)}&from=${fromStr}&sortBy=relevancy&language=en&pageSize=5`;
       }
 
