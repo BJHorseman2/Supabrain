@@ -1,11 +1,11 @@
 # 🧠 Superbrain
 
-Compare AI responses from ChatGPT and Gemini side by side in a beautiful, modern interface.
+Compare AI responses from ChatGPT, Gemini, and Claude side by side in a beautiful, modern interface featuring a three-way AI comparison.
 
 ## Features
 
-- **Dual AI Responses**: Get simultaneous responses from both ChatGPT and Gemini
-- **Side-by-Side Comparison**: Easily compare how different AI models answer the same question
+- **Triple AI Responses**: Get simultaneous responses from ChatGPT, Gemini, and Claude
+- **Three-Way Comparison**: Easily compare how different AI models answer the same question
 - **Modern UI**: Beautiful gradient design with glassmorphism effects
 - **Real-time Loading States**: Visual feedback while waiting for responses
 - **Keyboard Shortcuts**: Press Enter to submit questions quickly
@@ -36,6 +36,7 @@ Compare AI responses from ChatGPT and Gemini side by side in a beautiful, modern
    # Edit .env.local and add your keys:
    OPENAI_API_KEY=your_openai_api_key_here
    GEMINI_API_KEY=your_gemini_api_key_here
+   CLAUDE_API_KEY=your_claude_api_key_here
    ```
 
 ### Getting API Keys
@@ -51,6 +52,13 @@ Compare AI responses from ChatGPT and Gemini side by side in a beautiful, modern
 1. Go to [Google AI Studio](https://makersuite.google.com/app/apikey)
 2. Sign in with your Google account
 3. Click "Get API Key"
+4. Create a new API key
+5. Copy and paste into `.env.local`
+
+#### Anthropic Claude
+1. Go to [Anthropic Console](https://console.anthropic.com/)
+2. Sign up or log in
+3. Navigate to Settings → API Keys
 4. Create a new API key
 5. Copy and paste into `.env.local`
 
@@ -78,6 +86,7 @@ Open [http://localhost:3000](http://localhost:3000) in your browser.
 - **Tailwind CSS** - Styling
 - **OpenAI SDK** - ChatGPT integration
 - **Google Generative AI** - Gemini integration
+- **Anthropic SDK** - Claude integration
 
 ## Project Structure
 
@@ -88,8 +97,10 @@ superbrain/
 │   │   └── chat/
 │   │       ├── openai/
 │   │       │   └── route.ts    # ChatGPT API endpoint
-│   │       └── gemini/
-│   │           └── route.ts    # Gemini API endpoint
+│   │       ├── gemini/
+│   │       │   └── route.ts    # Gemini API endpoint
+│   │       └── claude/
+│   │           └── route.ts    # Claude API endpoint
 │   ├── page.tsx                # Main UI component
 │   └── layout.tsx              # App layout
 ├── public/                     # Static assets
@@ -115,12 +126,14 @@ superbrain/
 
 ## Future Enhancements
 
-- Add more AI models (Claude, Llama, etc.)
+- Add more AI models (Llama, Cohere, etc.)
 - Save conversation history
 - Export responses
 - Add response voting/comparison metrics
 - Implement response streaming
 - Add dark/light theme toggle
+- Add response time tracking
+- Implement prompt templates
 
 ## License
 

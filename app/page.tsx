@@ -5,6 +5,7 @@ import { useState } from 'react';
 interface LLMResponse {
   openai: string;
   gemini: string;
+  claude: string;
 }
 
 export default function Home() {
@@ -12,10 +13,12 @@ export default function Home() {
   const [responses, setResponses] = useState<LLMResponse>({
     openai: '',
     gemini: '',
+    claude: '',
   });
   const [loading, setLoading] = useState({
     openai: false,
     gemini: false,
+    claude: false,
   });
   const [error, setError] = useState<string>('');
 
@@ -26,10 +29,10 @@ export default function Home() {
     }
 
     setError('');
-    setResponses({ openai: '', gemini: '' });
-    setLoading({ openai: true, gemini: true });
+    setResponses({ openai: '', gemini: '', claude: '' });
+    setLoading({ openai: true, gemini: true, claude: true });
 
-    // Call both APIs in parallel
+    // Call all three APIs in parallel
     const openaiPromise = fetch('/api/chat/openai', {
       method: 'POST',
       headers: {
@@ -39,6 +42,14 @@ export default function Home() {
     });
 
     const geminiPromise = fetch('/api/chat/gemini', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ message: question }),
+    });
+
+    const claudePromise = fetch('/api/chat/claude', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -79,6 +90,23 @@ export default function Home() {
       .finally(() => {
         setLoading((prev) => ({ ...prev, gemini: false }));
       });
+
+    // Handle Claude response
+    claudePromise
+      .then((res) => res.json())
+      .then((data) => {
+        if (data.error) {
+          setResponses((prev) => ({ ...prev, claude: `Error: ${data.error}` }));
+        } else {
+          setResponses((prev) => ({ ...prev, claude: data.response }));
+        }
+      })
+      .catch((err) => {
+        setResponses((prev) => ({ ...prev, claude: `Error: ${err.message}` }));
+      })
+      .finally(() => {
+        setLoading((prev) => ({ ...prev, claude: false }));
+      });
   };
 
   const handleKeyPress = (e: React.KeyboardEvent) => {
@@ -104,7 +132,7 @@ export default function Home() {
             SUPERBRAIN
           </h1>
           <p className="text-lg text-[#34495E] font-mono">
-            [ two minds • one question • zero consensus ]
+            [ three minds • one question • zero consensus ]
           </p>
         </div>
 
@@ -124,18 +152,18 @@ export default function Home() {
             )}
             <button
               onClick={askQuestion}
-              disabled={loading.openai || loading.gemini}
+              disabled={loading.openai || loading.gemini || loading.claude}
               className="mt-4 w-full py-3 px-6 bg-[#2C3E50] text-[#FFD700] font-black text-xl border-4 border-[#2C3E50] shadow-[4px_4px_0px_0px_rgba(255,215,0,1)] hover:shadow-[6px_6px_0px_0px_rgba(255,215,0,1)] hover:translate-x-[-2px] hover:translate-y-[-2px] disabled:opacity-50 disabled:cursor-not-allowed transition-all transform active:shadow-none active:translate-x-[4px] active:translate-y-[4px]"
             >
-              {loading.openai || loading.gemini ? '⚡ THINKING...' : '→ ASK THE BRAINS'}
+              {loading.openai || loading.gemini || loading.claude ? '⚡ THINKING...' : '→ ASK THE BRAINS'}
             </button>
           </div>
         </div>
 
         {/* Response Section */}
-        {(responses.openai || responses.gemini || loading.openai || loading.gemini) && (
+        {(responses.openai || responses.gemini || responses.claude || loading.openai || loading.gemini || loading.claude) && (
           <div className="max-w-7xl mx-auto">
-            <div className="grid md:grid-cols-2 gap-8">
+            <div className="grid md:grid-cols-3 gap-6">
               {/* ChatGPT Response */}
               <div className="relative">
                 <div className="absolute -top-3 -left-3 bg-[#FF6B6B] text-white px-4 py-1 font-black text-sm transform -rotate-3 z-20">
@@ -162,7 +190,7 @@ export default function Home() {
 
               {/* Gemini Response */}
               <div className="relative">
-                <div className="absolute -top-3 -right-3 bg-[#4ECDC4] text-white px-4 py-1 font-black text-sm transform rotate-3 z-20">
+                <div className="absolute -top-3 -left-3 bg-[#4ECDC4] text-white px-4 py-1 font-black text-sm transform rotate-2 z-20">
                   BRAIN #2
                 </div>
                 <div className="bg-white border-4 border-[#2C3E50] shadow-[6px_6px_0px_0px_rgba(78,205,196,1)] p-6 transform hover:rotate-1 transition-transform">
@@ -178,6 +206,30 @@ export default function Home() {
                     ) : (
                       <p className="text-[#2C3E50] whitespace-pre-wrap leading-relaxed font-mono text-sm">
                         {responses.gemini || 'Standing by...'}
+                      </p>
+                    )}
+                  </div>
+                </div>
+              </div>
+
+              {/* Claude Response */}
+              <div className="relative">
+                <div className="absolute -top-3 -right-3 bg-[#9B59B6] text-white px-4 py-1 font-black text-sm transform rotate-3 z-20">
+                  BRAIN #3
+                </div>
+                <div className="bg-white border-4 border-[#2C3E50] shadow-[6px_6px_0px_0px_rgba(155,89,182,1)] p-6 transform hover:-rotate-1 transition-transform">
+                  <div className="flex items-center mb-4 justify-between">
+                    <h2 className="text-2xl font-black text-[#2C3E50]">CLAUDE</h2>
+                    <div className="w-8 h-8 bg-[#9B59B6] rounded-full animate-pulse"></div>
+                  </div>
+                  <div className="bg-[#FFFEF9] border-2 border-dashed border-[#2C3E50] p-5 min-h-[200px] max-h-[500px] overflow-y-auto">
+                    {loading.claude ? (
+                      <div className="flex items-center justify-center h-32">
+                        <div className="text-4xl animate-bounce animation-delay-1000">🤓</div>
+                      </div>
+                    ) : (
+                      <p className="text-[#2C3E50] whitespace-pre-wrap leading-relaxed font-mono text-sm">
+                        {responses.claude || 'Ready to assist...'}
                       </p>
                     )}
                   </div>
