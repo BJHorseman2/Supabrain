@@ -9,12 +9,18 @@ async function getNewsContext(question: string): Promise<Array<{title: string, u
 
   try {
     const truncatedQuery = question.substring(0, 200);
+    const today = new Date();
+    const from = new Date(today);
+    from.setDate(today.getDate() - 2);
+    const fromStr = from.toISOString().split("T")[0]; // YYYY-MM-DD
+
     const newsApiBase = process.env.NEWS_API_BASE || 'https://newsapi.org/v2/everything';
     const url = new URL(newsApiBase);
     url.searchParams.append('q', truncatedQuery);
-    url.searchParams.append('pageSize', '5');
+    url.searchParams.append('from', fromStr);
     url.searchParams.append('sortBy', 'publishedAt');
     url.searchParams.append('language', 'en');
+    url.searchParams.append('pageSize', '5');
 
     const response = await fetch(url.toString(), {
       headers: {
@@ -75,8 +81,15 @@ export async function POST(request: NextRequest) {
     const newsItems = await getNewsContext(message);
     const newsText = newsToText(newsItems);
 
-    // Build enhanced prompt with news context
-    const enhancedMessage = `${message}\n\nNews context (may be useful for time-sensitive questions):\n${newsText}`;
+    // Build enhanced prompt with clear context for Claude
+    const userContent = `
+You are one of three models answering the same question side by side.
+
+News context from an external news API (may be useful for time-sensitive questions):
+${newsText}
+
+User question: ${message}
+`.trim();
 
     const anthropic = new Anthropic({
       apiKey: process.env.CLAUDE_API_KEY,
@@ -88,7 +101,7 @@ export async function POST(request: NextRequest) {
       messages: [
         {
           role: 'user',
-          content: enhancedMessage,
+          content: userContent,
         },
       ],
     });
