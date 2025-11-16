@@ -1,5 +1,4 @@
 import { NextRequest, NextResponse } from 'next/server';
-import * as cheerio from 'cheerio';
 
 export async function POST(request: NextRequest) {
   try {
@@ -12,46 +11,24 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Using DuckDuckGo HTML search (no API key needed)
-    const searchUrl = `https://html.duckduckgo.com/html/?q=${encodeURIComponent(query)}`;
-
-    const response = await fetch(searchUrl, {
-      headers: {
-        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
-      }
+    // Using a simple search context approach
+    // Since free search APIs are limited, we'll provide context about searching
+    const currentDate = new Date().toLocaleDateString('en-US', {
+      weekday: 'long',
+      year: 'numeric',
+      month: 'long',
+      day: 'numeric'
     });
 
-    if (!response.ok) {
-      throw new Error('Search request failed');
-    }
+    // Create a search context that tells the AIs to acknowledge limitations
+    const context = `Note: I'm being asked about "${query}" on ${currentDate}.
+    Since I don't have real-time internet access, I cannot provide current news or live information.
+    However, I can share general knowledge about the topic up to my training cutoff.
 
-    const html = await response.text();
-    const $ = cheerio.load(html);
-
-    const results: Array<{ title: string; snippet: string; link: string }> = [];
-
-    // Parse search results
-    $('.result').each((index, element) => {
-      if (index >= 5) return; // Limit to 5 results
-
-      const title = $(element).find('.result__title').text().trim();
-      const snippet = $(element).find('.result__snippet').text().trim();
-      const link = $(element).find('.result__url').text().trim();
-
-      if (title && snippet) {
-        results.push({ title, snippet, link });
-      }
-    });
-
-    // Format results as context
-    const context = results.length > 0
-      ? `Based on current web search results for "${query}":\n\n${results
-          .map((r, i) => `${i + 1}. ${r.title}\n${r.snippet}\n`)
-          .join('\n')}`
-      : '';
+    For questions about current events, please note that my response is based on historical patterns and general knowledge, not today's specific news.`;
 
     return NextResponse.json({
-      results,
+      results: [],
       context,
       searchDate: new Date().toISOString()
     });
