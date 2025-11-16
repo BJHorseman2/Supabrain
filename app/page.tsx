@@ -21,7 +21,7 @@ export default function Home() {
     claude: false,
   });
   const [error, setError] = useState<string>('');
-  const [useWebSearch, setUseWebSearch] = useState(false);
+  const [useWebSearch, setUseWebSearch] = useState(true); // Default to ON
   const [searchContext, setSearchContext] = useState<string>('');
 
   const askQuestion = async () => {
@@ -35,7 +35,30 @@ export default function Home() {
     setLoading({ openai: true, gemini: true, claude: true });
     setSearchContext('');
 
-    const finalQuestion = question;
+    let finalQuestion = question;
+
+    // Fetch current information if web search is enabled
+    if (useWebSearch) {
+      try {
+        const searchResponse = await fetch('/api/search', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({ query: question }),
+        });
+
+        if (searchResponse.ok) {
+          const searchData = await searchResponse.json();
+          if (searchData.context) {
+            setSearchContext(searchData.context);
+            finalQuestion = `${searchData.context}\n\nQuestion: ${question}`;
+          }
+        }
+      } catch (err) {
+        console.error('Search failed, continuing without context:', err);
+      }
+    }
 
     // Call all three APIs in parallel
     const openaiPromise = fetch('/api/chat/openai', {
@@ -144,7 +167,25 @@ export default function Home() {
         {/* Input Section */}
         <div className="max-w-4xl mx-auto mb-8">
           <div className="bg-white border-4 border-[#2C3E50] rounded-none shadow-[8px_8px_0px_0px_rgba(44,62,80,1)] p-6 transform rotate-0 hover:rotate-1 transition-transform">
-            {/* Removed web search toggle - not working properly */}
+            {/* Web Search Toggle */}
+            <div className="mb-4 flex items-center justify-between">
+              <label className="flex items-center cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={useWebSearch}
+                  onChange={(e) => setUseWebSearch(e.target.checked)}
+                  className="w-5 h-5 mr-3 accent-[#FFD700]"
+                />
+                <span className="text-[#2C3E50] font-mono font-bold">
+                  🔍 Enable Current Information (News API)
+                </span>
+              </label>
+              {useWebSearch && (
+                <span className="text-xs text-[#7F8C8D] font-mono">
+                  Fetching current news...
+                </span>
+              )}
+            </div>
             <textarea
               value={question}
               onChange={(e) => setQuestion(e.target.value)}
