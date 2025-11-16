@@ -1,10 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import Anthropic from '@anthropic-ai/sdk';
 
-const anthropic = new Anthropic({
-  apiKey: process.env.CLAUDE_API_KEY,
-});
-
 export async function POST(request: NextRequest) {
   try {
     const { message } = await request.json();
@@ -22,6 +18,10 @@ export async function POST(request: NextRequest) {
         { status: 500 }
       );
     }
+
+    const anthropic = new Anthropic({
+      apiKey: process.env.CLAUDE_API_KEY,
+    });
 
     const completion = await anthropic.messages.create({
       model: 'claude-3-haiku-20240307',
