@@ -2,6 +2,18 @@ import { NextRequest, NextResponse } from 'next/server';
 import { GoogleGenerativeAI } from '@google/generative-ai';
 import { getNewsContext, newsToText } from '@/lib/news-helper';
 
+// Check if question is about Tech/AI
+function isTechAIQuestion(question: string): boolean {
+  const q = question.toLowerCase();
+  const techTerms = ['ai', 'artificial intelligence', 'openai', 'chatgpt', 'claude', 'anthropic',
+                     'gemini', 'google', 'microsoft', 'nvidia', 'chip', 'semiconductor', 'gpu',
+                     'llm', 'machine learning', 'tech', 'technology', 'software', 'startup',
+                     'deepmind', 'meta', 'apple', 'amazon', 'model', 'neural', 'algorithm',
+                     'compute', 'training', 'inference', 'transformer', 'gpt', 'api', 'cloud'];
+
+  return techTerms.some(term => q.includes(term));
+}
+
 export async function POST(request: NextRequest) {
   try {
     const { message } = await request.json();
@@ -13,6 +25,15 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    // Check if question is about Tech/AI
+    if (!isTechAIQuestion(message)) {
+      const nonTechMessage = "SUPERBRAIN is limited to Tech & AI news only. Your question doesn't appear to be about technology or AI. Please ask about today's Tech/AI news, companies, models, chips, regulations, etc.";
+      return NextResponse.json({
+        response: nonTechMessage,
+        newsContext: []
+      });
+    }
+
     if (!process.env.GEMINI_API_KEY) {
       return NextResponse.json(
         { error: 'Gemini API key not configured' },
@@ -20,7 +41,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Get news context
+    // Get news context (will be Tech/AI focused)
     const newsItems = await getNewsContext(message);
 
     // Log for debugging
@@ -28,17 +49,19 @@ export async function POST(request: NextRequest) {
 
     const newsText = newsToText(newsItems);
 
-    // Build enhanced prompt with stronger guidance
-    const enhancedMessage = `You are one of three models answering the same question side by side.
+    // Build enhanced prompt for Tech/AI focus
+    const enhancedMessage = `You are answering a question about recent Tech & AI news only.
 
-Web context (this is the ONLY up-to-date information you can use):
+Web context (this is the ONLY up-to-date Tech/AI information you can use):
 ${newsText}
 
 Rules:
-- If the answer is clearly in the web context, use it.
+- You are ONLY allowed to answer about Tech/AI topics
+- If the answer is clearly in the web context above, summarize it
 - If the web context does NOT contain the answer, say explicitly:
-  "The web results I was given do not contain the answer to this question."
-- Do NOT guess based on prior knowledge or older world state.
+  "These Tech/AI news results do not mention that today."
+- Do NOT guess based on prior knowledge or older information
+- Focus on what's in today's tech news only
 
 User question: ${message}`;
 

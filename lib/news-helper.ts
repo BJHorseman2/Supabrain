@@ -13,12 +13,8 @@ export async function getNewsContext(question: string): Promise<Array<{title: st
   });
 
   try {
-    // Classify the question
-    const q = question.toLowerCase();
-    const isTechTodayQuestion =
-      q.includes("tech news") ||
-      q.includes("technology news") ||
-      (q.includes("tech") && (q.includes("today") || q.includes("this week")));
+    // Always focus on Tech/AI for this app
+    const isTechTodayQuestion = true; // Always use tech-focused search
 
     // First, try NewsAPI if key is available (skip obviously fake keys)
     if (process.env.NEWS_API_KEY &&
@@ -29,12 +25,15 @@ export async function getNewsContext(question: string): Promise<Array<{title: st
       let newsApiUrl: string;
 
       if (isTechTodayQuestion) {
-        // Tech news query: use generic tech query with recent window
+        // Tech news query: combine user question with tech/AI terms for better results
         const from = new Date(today);
         from.setDate(today.getDate() - 2);
         const fromStr = from.toISOString().split("T")[0];
-        const techQuery = "technology OR tech OR AI OR startups OR software";
-        newsApiUrl = `https://newsapi.org/v2/everything?q=${encodeURIComponent(techQuery)}&from=${fromStr}&sortBy=publishedAt&language=en&pageSize=5`;
+        // Combine user question with tech/AI terms
+        const userQuery = question.substring(0, 100);
+        const techTerms = "(AI OR artificial intelligence OR OpenAI OR ChatGPT OR Claude OR Anthropic OR Google OR Gemini OR Microsoft OR Nvidia OR chip OR semiconductor OR GPU OR LLM OR machine learning OR tech OR technology)";
+        const combinedQuery = `${userQuery} ${techTerms}`;
+        newsApiUrl = `https://newsapi.org/v2/everything?q=${encodeURIComponent(combinedQuery)}&from=${fromStr}&sortBy=publishedAt&language=en&pageSize=5`;
       } else {
         // General query: use full question with wider window and relevancy sorting
         const truncatedQuery = question.substring(0, 200);
@@ -66,9 +65,10 @@ export async function getNewsContext(question: string): Promise<Array<{title: st
     let guardianUrl: string;
 
     if (isTechTodayQuestion) {
-      // Tech news: use generic tech query and newest sorting
-      const techQuery = "technology OR tech OR AI OR software";
-      guardianUrl = `https://content.guardianapis.com/search?q=${encodeURIComponent(techQuery)}&api-key=test&show-fields=trailText,bodyText&page-size=10&order-by=newest`;
+      // Tech news: combine user question with tech terms
+      const userQuery = question.substring(0, 100);
+      const techQuery = `${userQuery} (AI OR OpenAI OR ChatGPT OR Anthropic OR Nvidia OR tech OR technology OR software OR chip OR LLM)`;
+      guardianUrl = `https://content.guardianapis.com/search?q=${encodeURIComponent(techQuery)}&section=technology&api-key=test&show-fields=trailText,bodyText&page-size=10&order-by=newest`;
     } else {
       // General query: use full question with relevance sorting
       const truncatedQuery = question.substring(0, 200);
