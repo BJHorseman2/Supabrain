@@ -13,6 +13,15 @@ export async function getNewsContext(question: string): Promise<Array<{title: st
   });
 
   try {
+    // Compute how many days back to search based on question content
+    const qLower = question.toLowerCase();
+
+    let daysBack = 2; // default
+    if (qLower.includes("weekend") || qLower.includes("this weekend") ||
+        qLower.includes("this week") || qLower.includes("last week")) {
+      daysBack = 7;
+    }
+
     // Always focus on Tech/AI for this app
     const isTechTodayQuestion = true; // Always use tech-focused search
 
@@ -28,7 +37,7 @@ export async function getNewsContext(question: string): Promise<Array<{title: st
         // Tech news query: combine user question with tech/AI terms for better results
         const today = new Date();
         const from = new Date(today);
-        from.setDate(today.getDate() - 2);
+        from.setDate(today.getDate() - daysBack);
         const fromStr = from.toISOString().split("T")[0];
         // Combine user question with tech/AI terms
         const userQuery = question.substring(0, 100);
@@ -85,13 +94,13 @@ export async function getNewsContext(question: string): Promise<Array<{title: st
       if (guardianData.response?.results?.length > 0) {
         if (isTechTodayQuestion) {
           // For tech today questions, filter to recent articles
-          const twoDaysAgo = new Date();
-          twoDaysAgo.setDate(twoDaysAgo.getDate() - 2);
+          const cutoffDate = new Date();
+          cutoffDate.setDate(cutoffDate.getDate() - daysBack);
 
           const recentArticles = guardianData.response.results
             .filter((article: any) => {
               const pubDate = new Date(article.webPublicationDate);
-              return pubDate > twoDaysAgo;
+              return pubDate > cutoffDate;
             })
             .slice(0, 5);
 
