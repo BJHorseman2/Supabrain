@@ -38,6 +38,7 @@ export async function getNewsContext(question: string): Promise<Array<{title: st
       } else {
         // General query: use full question with wider window and relevancy sorting
         const truncatedQuery = question.substring(0, 200);
+        const today = new Date();
         const yearAgo = new Date(today);
         yearAgo.setDate(today.getDate() - 365);
         const fromStr = yearAgo.toISOString().split("T")[0];
