@@ -28,10 +28,14 @@ export async function POST(request: NextRequest) {
     const userContent = `
 You are one of three models answering the same question side by side.
 
-News context from an external news API (may be useful for time-sensitive questions):
+IMPORTANT: You have been provided with current date and news information below. You DO have access to current information through this context.
+
+Current Information and News Context:
 ${newsText}
 
 User question: ${message}
+
+Please answer using the current date and news context provided above when relevant.
 `.trim();
 
     const anthropic = new Anthropic({

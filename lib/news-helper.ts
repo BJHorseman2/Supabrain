@@ -3,9 +3,21 @@
 export async function getNewsContext(question: string): Promise<Array<{title: string, url: string, snippet: string}>> {
   const newsItems: Array<{title: string, url: string, snippet: string}> = [];
 
+  // Always get current date
+  const today = new Date();
+  const todayStr = today.toLocaleDateString('en-US', {
+    weekday: 'long',
+    year: 'numeric',
+    month: 'long',
+    day: 'numeric'
+  });
+
   try {
-    // First, try NewsAPI if key is available
-    if (process.env.NEWS_API_KEY && process.env.NEWS_API_KEY !== '2f3d4e5a6b7c8d9e0f1a2b3c4d5e6f7a') {
+    // First, try NewsAPI if key is available (skip obviously fake keys)
+    if (process.env.NEWS_API_KEY &&
+        process.env.NEWS_API_KEY !== '2f3d4e5a6b7c8d9e0f1a2b3c4d5e6f7a' &&
+        process.env.NEWS_API_KEY !== 'c4a1f1e4c4e746f7b3f3c7e8d9a2b5e3' &&
+        process.env.NEWS_API_KEY.length > 20) {
       const truncatedQuery = question.substring(0, 200);
       const today = new Date();
       const from = new Date(today);
@@ -95,15 +107,29 @@ export async function getNewsContext(question: string): Promise<Array<{title: st
 }
 
 export function newsToText(newsItems: Array<{title: string, url: string, snippet: string}>): string {
+  // Always include current date at the beginning
+  const today = new Date();
+  const todayStr = today.toLocaleDateString('en-US', {
+    weekday: 'long',
+    year: 'numeric',
+    month: 'long',
+    day: 'numeric'
+  });
+
+  let newsText = `Today's Date: ${todayStr}\n\n`;
+
   if (newsItems.length === 0) {
-    return 'No recent news articles were fetched.';
+    newsText += 'No recent news articles were fetched, but the current date has been provided above.';
+  } else {
+    newsText += 'Recent news (from the last 48 hours):\n\n';
+    newsText += newsItems.map((item, index) => {
+      if (item.url) {
+        return `(${index + 1}) ${item.title}\nURL: ${item.url}\nSnippet: ${item.snippet}`;
+      } else {
+        return `${item.title}\n${item.snippet}`;
+      }
+    }).join('\n\n');
   }
 
-  return newsItems.map((item, index) => {
-    if (item.url) {
-      return `(${index + 1}) ${item.title}\nURL: ${item.url}\nSnippet: ${item.snippet}`;
-    } else {
-      return `${item.title}\n${item.snippet}`;
-    }
-  }).join('\n\n');
+  return newsText;
 }

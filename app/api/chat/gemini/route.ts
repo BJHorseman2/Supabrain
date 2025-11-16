@@ -25,7 +25,12 @@ export async function POST(request: NextRequest) {
     const newsText = newsToText(newsItems);
 
     // Build enhanced prompt with news context
-    const enhancedMessage = `${message}\n\nNews context (may be useful for time-sensitive questions):\n${newsText}`;
+    const enhancedMessage = `Current Information and News Context:
+${newsText}
+
+User question: ${message}
+
+Please answer using the current date and news context provided above when relevant.`;
 
     const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
     // Using Gemini 2.0 Flash which is available and fast
