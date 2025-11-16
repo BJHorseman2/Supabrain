@@ -22,15 +22,26 @@ export async function POST(request: NextRequest) {
 
     // Get news context
     const newsItems = await getNewsContext(message);
+
+    // Log for debugging
+    console.log("WEB CONTEXT FOR QUESTION:", message, JSON.stringify(newsItems, null, 2));
+
     const newsText = newsToText(newsItems);
 
-    // Build enhanced prompt with news context
-    const enhancedMessage = `Current Information and News Context:
+    // Build enhanced prompt with stronger guidance
+    const enhancedMessage = `You are answering a question with web search results provided.
+
+Current Information and News Context:
 ${newsText}
 
 User question: ${message}
 
-Please answer using the current date and news context provided above when relevant.`;
+IMPORTANT INSTRUCTIONS:
+- Use ONLY the information provided above to answer the question
+- If the web search results don't contain relevant information, say "I couldn't find specific information about that in the current search results"
+- Do NOT make up or guess information that isn't in the provided context
+- You can provide general knowledge but clearly distinguish it from current information
+- Always reference the current date provided above when discussing time-sensitive topics`;
 
     const openai = new OpenAI({
       apiKey: process.env.OPENAI_API_KEY,
